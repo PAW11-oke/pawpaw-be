@@ -1,11 +1,10 @@
-"use client";
 import { useState } from 'react';
 
 export default function Home() {
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [message, setMessage] = useState('');
+        const [name, setName] = useState('');
+        const [email, setEmail] = useState('');
+        const [password, setPassword] = useState('');
+        const [message, setMessage] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -19,9 +18,6 @@ export default function Home() {
             const data = await res.json();
             if (res.ok) {
                 setMessage('User created successfully!');
-                setName('');
-                setEmail('');
-                setPassword('');
             } else {
                 setMessage(`Error: ${data.message}`);
             }
@@ -36,11 +32,11 @@ export default function Home() {
             <h1>Create User</h1>
             <form onSubmit={handleSubmit}>
                 <input
-                    type="text"
-                    placeholder="Name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
+                type="text"
+                placeholder="Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
                 />
                 <input
                     type="email"
@@ -60,5 +56,5 @@ export default function Home() {
             </form>
             {message && <p>{message}</p>}
         </div>
-    );
+        );
 }

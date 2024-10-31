@@ -13,8 +13,8 @@ export async function GET(request, { params }) {
             .digest('hex');
 
         const user = await User.findOne({
-            VerificationToken: hashedToken,
-            VerificationExpires: { $gt: Date.now() }
+            verificationToken: hashedToken,
+            verificationExpires: { $gt: Date.now() }
         });
 
         if (!user) {
@@ -26,8 +26,8 @@ export async function GET(request, { params }) {
 
         // Update user
         user.isVerified = true;
-        user.VerificationToken = undefined;
-        user.VerificationExpires = undefined;
+        user.verificationToken = undefined;
+        user.verificationExpires = undefined;
         await user.save();
 
         return NextResponse.json(

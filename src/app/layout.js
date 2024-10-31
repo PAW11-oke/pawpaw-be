@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-    title: 'My Next.js App',
+    title: 'PawPaw Pet Care',
     description: 'A simple Next.js app with MongoDB',
 };
 

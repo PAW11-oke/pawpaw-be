@@ -24,7 +24,9 @@ const userSchema = new mongoose.Schema({
   verificationToken: { type: String, default: null },
   verificationExpires: { type: Date, default: null },
   loginAttempts: { type: Number, default: 0 },
-  isVerified: { type: Boolean, default: false }
+  isVerified: { type: Boolean, default: false },
+  profilePicture: { type :String},
+  bio: {type: String}
 });
 
 userSchema.pre('save', async function(next) {

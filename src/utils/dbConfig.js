@@ -13,7 +13,11 @@ export async function connectToDatabase() {
             dbName: 'pawpaw', 
         });
 
-        isConnected = connection.readyState === 1;
+        if (mongoose.connection.readyState >= 1) return;
+        return mongoose.connect(process.env.MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
         console.log('=> MongoDB connected successfully');
     } catch (error) {
         console.error('=> MongoDB connection failed:', error);

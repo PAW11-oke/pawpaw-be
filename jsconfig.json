@@ -3,5 +3,10 @@
     "paths": {
       "@/*": ["./src/*"]
     }
-  }
+  },
+  "scripts": {
+  "dev": "next dev",
+  "dev:nodemon": "nodemon --watch 'pages/**' --watch 'components/**' --exec 'npm run dev'"
 }
+}
+

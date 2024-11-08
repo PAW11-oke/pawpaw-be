@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react'; // Import signIn dari next-auth/react
+import { signIn } from 'next-auth/react'; 
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -13,26 +13,27 @@ export default function LoginPage() {
         e.preventDefault();
 
         try {
-            const res = await fetch('/api/auth/callback/credentials', {
+            const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ email, password }), // Kirim body dalam bentuk JSON
             });
+
             const data = await res.json();
             if (res.ok) {
                 setMessage('Login successful');
-                router.push('/dashboard');
+                router.push('/chat');
             } else {
                 setMessage(data.message || 'Login failed');
             }
         } catch (error) {
-            console.error(error);
+            console.error('Login error:', error);
             setMessage('An error occurred');
         }
     };
 
     const handleGoogleLogin = async () => {
-        await signIn('google', { callbackUrl: '/dashboard' }); // Langsung panggil signIn
+        await signIn('google', { callbackUrl: '/chat' });
     };
 
     return (

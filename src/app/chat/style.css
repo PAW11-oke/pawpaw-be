@@ -1,0 +1,47 @@
+.group-selection {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.group-button {
+    padding: 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.group-button:hover {
+    background-color: #0056b3;
+}
+
+.chatroom {
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    padding: 10px;
+    min-height: 300px;
+}
+
+.message-input {
+    display: flex;
+    gap: 10px;
+}
+
+.message-input input {
+    flex-grow: 1;
+    padding: 10px;
+    font-size: 16px;
+}
+
+.message-input button {
+    padding: 10px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.message-input button:disabled {
+    background-color: #ccc;
+}

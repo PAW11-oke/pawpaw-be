@@ -1,16 +1,16 @@
-import './globals.css';
-
-export const metadata = {
-    title: 'PawPaw Pet Care',
-    description: 'A simple Next.js app with MongoDB',
-};
+// app/layout.js
+"use client";
+import { SessionProvider } from 'next-auth/react';
+import './globals.css';  // Pastikan path-nya benar
 
 export default function RootLayout({ children }) {
-    return (
-        <html lang="en">
-        <body>
-            {children}
+  return (
+    <SessionProvider>
+      <html lang="en">
+        <body className="bg-gray-100 min-h-screen">  {/* Gaya Tailwind diterapkan di sini */}
+          {children}
         </body>
-        </html>
-    );
+      </html>
+    </SessionProvider>
+  );
 }

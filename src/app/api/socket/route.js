@@ -1,4 +1,3 @@
-// app/api/socket/route.js
 import { initSocket } from '@/utils/socket';
 
 export async function GET(req) {

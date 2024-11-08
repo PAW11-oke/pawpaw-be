@@ -11,9 +11,6 @@ export default function LoginPage() {
 
     const handleManualLogin = async (e) => {
         e.preventDefault();
-        
-        // Debugging: cek apakah email dan password diisi
-        console.log("Login request with: ", { email, password });
 
         try {
             const res = await fetch('/api/auth/login', {

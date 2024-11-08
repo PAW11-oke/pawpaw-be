@@ -1,104 +1,149 @@
 "use client";
-
 import { useState, useEffect } from 'react';
-import io from 'socket.io-client';
-
-let socket;
 
 export default function ChatPage() {
     const [groups, setGroups] = useState([]);
-    const [selectedGroup, setSelectedGroup] = useState(null); // Menyimpan grup yang dipilih
+    const [selectedGroupId, setSelectedGroupId] = useState(null);
     const [messages, setMessages] = useState([]);
-    const [newMessage, setNewMessage] = useState('');
+    const [messageContent, setMessageContent] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-    // Fetch grup saat pertama kali di-mount
     useEffect(() => {
-        const fetchGroups = async () => {
-            const response = await fetch('/api/chat/group');
-            const data = await response.json();
-            setGroups(data);
-        };
-
-        fetchGroups();
+        setLoading(true);
+        fetch('/api/chat/group')
+            .then(res => res.json())
+            .then(data => {
+                setGroups(data);
+                setLoading(false);
+            })
+            .catch(err => {
+                setError('Failed to fetch groups');
+                setLoading(false);
+                console.error(err);
+            });
     }, []);
 
-    // Koneksi ke socket.io server saat halaman di-mount
     useEffect(() => {
-        socket = io(process.env.NEXTAUTH_URL); // Koneksi ke server Socket.IO
+        if (selectedGroupId) {
+            setLoading(true);
+            fetch(`/api/chat/group/${selectedGroupId}/message`)
+                .then(res => res.json())
+                .then(data => {
+                    setMessages(data);
+                    setLoading(false);
+                })
+                .catch(err => {
+                    setError('Failed to fetch messages');
+                    setLoading(false);
+                    console.error(err);
+                });
+        }
+    }, [selectedGroupId]);
 
-        socket.on('connect', () => {
-            console.log('Connected to socket:', socket.id);
-        });
-
-        // Menerima pesan dari server
-        socket.on('receiveMessage', (message) => {
-            setMessages((prevMessages) => [...prevMessages, message]);
-        });
-
-        // Bersihkan socket saat komponen di-unmount
-        return () => {
-            socket.disconnect();
-        };
-    }, []);
-
-    // Pilih grup untuk bergabung
-    const handleGroupSelect = (group) => {
-        setSelectedGroup(group);
-        socket.emit('joinGroup', group._id); // Emit event untuk bergabung ke grup tertentu
+    const handleGroupSelect = (groupId) => {
+        setSelectedGroupId(groupId);
+        setMessages([]);
+        setError(null);
     };
 
-    // Mengirim pesan ke server
-    const sendMessage = () => {
-        if (!newMessage.trim()) return; // Cegah pesan kosong
+    const handleMessageSend = async () => {
+        if (messageContent.trim() && selectedGroupId) {
+            const newMessage = {
+                content: messageContent,
+                groupId: selectedGroupId,
+            };
 
-        const messageData = {
-            groupId: selectedGroup._id,
-            content: newMessage,
-            userId: 'userId', // Ganti dengan userId sebenarnya
-            createdAt: new Date(),
-        };
+            setLoading(true);
+            try {
+                const response = await fetch(`/api/chat/group/${selectedGroupId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(newMessage),
+                });
 
-        socket.emit('sendMessage', messageData);
-        setNewMessage(''); // Reset input setelah pesan terkirim
+                if (response.ok) {
+                    const savedMessage = await response.json();
+                    setMessages(prevMessages => [...prevMessages, savedMessage]);
+                    setMessageContent('');
+                    setError(null);
+                } else {
+                    setError('Failed to send message');
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                setError('An error occurred while sending the message');
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            setError('Message content cannot be empty or no group selected');
+        }
     };
 
     return (
-        <div className="chat-page">
-            {!selectedGroup ? (
-                // Jika belum ada grup yang dipilih, tampilkan daftar grup
-                <div className="group-selection">
-                    <h2>Select a Group</h2>
-                    <ul>
-                        {groups.map((group) => (
-                            <li key={group._id}>
-                                <button onClick={() => handleGroupSelect(group)}>
-                                    {group.groupName} ({group.petType})
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            ) : (
-                // Jika sudah ada grup yang dipilih, tampilkan chat room
-                <div className="chat-room">
-                    <h2>Chatting in {selectedGroup.groupName}</h2>
-                    <div className="messages-container" style={{ overflowY: 'scroll', height: '400px', border: '1px solid #ccc', marginBottom: '10px' }}>
-                        {messages.map((msg, index) => (
-                            <div key={index} style={{ margin: '10px', padding: '10px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
-                                <p><strong>User {msg.userId}: </strong>{msg.content}</p>
-                            </div>
-                        ))}
-                    </div>
+        <div className="flex flex-col h-screen bg-gray-100 p-6">
+            <div className="group-selection flex gap-4 mb-4 overflow-x-auto">
+                {loading && !groups.length ? (
+                    <p className="text-gray-500">Loading groups...</p>
+                ) : error ? (
+                    <p className="text-red-500">{error}</p>
+                ) : (
+                    groups.map(group => (
+                        <button
+                            key={group._id}
+                            onClick={() => handleGroupSelect(group._id)}
+                            className={`group-button py-2 px-4 rounded ${
+                                selectedGroupId === group._id ? 'bg-blue-500 text-white' : 'bg-gray-200'
+                            } hover:bg-blue-400`}
+                        >
+                            {group.name}
+                        </button>
+                    ))
+                )}
+            </div>
 
-                    <div className="input-container">
-                        <input
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            placeholder="Type a message..."
-                            style={{ marginRight: '10px', width: '70%' }}
-                        />
-                        <button onClick={sendMessage}>Send</button>
+            {selectedGroupId && (
+                <div className="chatroom flex flex-col flex-grow bg-white rounded shadow-md p-4 mb-4">
+                    <h2 className="text-xl font-semibold mb-4">Chatroom: {groups.find(group => group._id === selectedGroupId)?.name}</h2>
+                    <div className="flex flex-col-reverse flex-grow overflow-y-auto border-t border-gray-300 pt-4">
+                        {loading ? (
+                            <p className="text-gray-500">Loading messages...</p>
+                        ) : error ? (
+                            <p className="text-red-500">{error}</p>
+                        ) : (
+                            messages.map((message) => (
+                                <div key={message._id} className="message mb-2">
+                                    <div className="bg-gray-200 p-3 rounded-lg max-w-xs mx-auto text-gray-800">
+                                        <p>{message.content}</p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
+                </div>
+            )}
+
+            {selectedGroupId && (
+                <div className="message-input flex gap-2">
+                    <input
+                        type="text"
+                        value={messageContent}
+                        onChange={(e) => setMessageContent(e.target.value)}
+                        placeholder="Type a message..."
+                        className="flex-grow p-3 border rounded-lg"
+                    />
+                    <button
+                        onClick={handleMessageSend}
+                        disabled={loading}
+                        className={`py-3 px-6 rounded-lg ${
+                            loading ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600'
+                        } text-white font-semibold`}
+                    >
+                        {loading ? 'Sending...' : 'Send'}
+                    </button>
                 </div>
             )}
         </div>

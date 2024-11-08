@@ -41,14 +41,14 @@ export async function POST(request) {
                 email: user.email,
             }
         }, { status: 200 });
-
+        
         // Set cookie dengan token
         response.cookies.set('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             maxAge: 60 * 60, // 1 jam
             path: '/'
-        });
+        });        
 
         return response;
 

@@ -1,5 +1,5 @@
 import { connectToDatabase } from '@/utils/dbConfig';
-import GroupChat from '@/models/chatGroupModel';
+import GroupChat from '@/models/petCategoryModel';
 
 export async function GET() {
     await connectToDatabase();

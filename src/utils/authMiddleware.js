@@ -15,7 +15,6 @@ export async function authMiddleware(request) {
         // Verify JWT token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         request.userId = decoded.userId;  // Attach userId to request for further use
-        console.log('JWT verified successfully:', decoded);
     } catch (error) {
         console.error('JWT verification error:', error);
         return NextResponse.json({ message: 'Invalid token' }, { status: 401 });

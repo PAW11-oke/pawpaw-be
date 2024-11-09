@@ -26,8 +26,8 @@ export const uploadToCloudinary = async (file, type) => {
     return new Promise((resolve, reject) => {
         cloudinary.uploader.upload_stream(
             {
-                folder: folder, // Menentukan folder di Cloudinary berdasarkan tipe
-                resource_type: 'auto', // Secara otomatis mendeteksi jenis file
+                folder: folder,
+                resource_type: 'auto',
             },
             (error, result) => {
                 if (error) {

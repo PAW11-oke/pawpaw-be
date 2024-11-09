@@ -15,5 +15,5 @@ export const uploadToCloudinary = async (file) => {
     }
 
     const data = await res.json();
-    return data.secure_url; // Pastikan return URL gambar
+    return data.secure_url; 
 };

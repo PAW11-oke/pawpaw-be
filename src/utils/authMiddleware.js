@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken';
 export async function authMiddleware(request) {
     // Retrieve token from cookies and get the token value
     const token = request.cookies.get('token')?.value;
-    console.log('Token received:', token); // Debugging: to confirm token is in the correct format
 
     // Ensure the token is a string before processing
     if (!token || typeof token !== 'string') {

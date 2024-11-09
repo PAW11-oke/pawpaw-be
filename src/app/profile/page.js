@@ -1,10 +1,14 @@
-"use client";
+"use client"
+
 import { useState } from 'react';
 
 export default function ProfilePage() {
     const [selectedImage, setSelectedImage] = useState(null);
     const [uploadedImageUrl, setUploadedImageUrl] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadType, setUploadType] = useState("profile");
+    const [statusMessage, setStatusMessage] = useState("");
+    
 
     // Handle file selection
     const handleFileChange = (event) => {
@@ -17,12 +21,14 @@ export default function ProfilePage() {
     // Handle file upload to Cloudinary
     const handleUpload = async () => {
         const fileInput = document.getElementById('imageInput');
-        if (!fileInput.files.length) return; // Pastikan ada file yang dipilih
+        if (!fileInput.files.length) return; // Ensure a file is selected
 
         setIsUploading(true);
+        setStatusMessage(""); // Reset status message
 
         const formData = new FormData();
         formData.append('file', fileInput.files[0]);
+        formData.append('type', uploadType); // Pass the upload type to API
 
         try {
             const res = await fetch('/api/upload', {
@@ -33,14 +39,17 @@ export default function ProfilePage() {
             const data = await res.json();
 
             if (res.ok) {
-                setUploadedImageUrl(data.url); // URL gambar dari Cloudinary
-                setSelectedImage(null); // Kosongkan gambar setelah upload
-                fileInput.value = ""; // Kosongkan input file
+                setUploadedImageUrl(data.url); // Cloudinary URL of uploaded image
+                setSelectedImage(null); // Clear selected image preview
+                fileInput.value = ""; // Clear file input
+                setStatusMessage("Image uploaded successfully!"); // Success message
             } else {
                 console.error('Upload failed:', data.error);
+                setStatusMessage("Upload failed: " + data.error);
             }
         } catch (error) {
             console.error('Error uploading image:', error);
+            setStatusMessage("Error uploading image");
         } finally {
             setIsUploading(false);
         }
@@ -75,6 +84,11 @@ export default function ProfilePage() {
             >
                 {isUploading ? 'Uploading...' : 'Upload Image'}
             </button>
+
+            {/* Status Message */}
+            {statusMessage && (
+                <p className="mt-4 text-center text-green-600">{statusMessage}</p>
+            )}
 
             {/* Uploaded Image Display */}
             {uploadedImageUrl && (

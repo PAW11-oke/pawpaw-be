@@ -36,7 +36,30 @@ yarn install
 Make the `.env` file and fill in the actual values for the environment variables.
 
 ```bash
-MONGODB_URI= <Connection string for MongoDB database>
+# NextAuth.js
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET="your_secret_key"
+
+# MongoDB
+MONGODB_URI=mongodb+srv://your_username:your_password@your_cluster.mongodb.net/your_database?retryWrites=true&w=majority
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+
+# Email
+EMAIL_PORT=your_port
+EMAIL_AUTH_USER=your_email
+EMAIL_AUTH_PASS=your_password
+
+# Google OAuth
+GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_client_secret
+
+# JWT (Jika digunakan)
+JWT_SECRET=your_jwt_secret
+NODE_ENV=production
 ```
 
 ## Getting Started
@@ -53,4 +76,4 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3030](http://localhost:3030) with your browser to see the result.

@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function ProfilePage() {
     const [selectedImage, setSelectedImage] = useState(null);
@@ -8,7 +8,27 @@ export default function ProfilePage() {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadType, setUploadType] = useState("profile");
     const [statusMessage, setStatusMessage] = useState("");
-    
+    const [profilePicture, setProfilePicture] = useState(null);
+
+    // Fetch profile picture on component mount
+    useEffect(() => {
+        const fetchProfilePicture = async () => {
+            try {
+                const res = await fetch('/api/upload');
+                const data = await res.json();
+
+                if (res.ok) {
+                    setProfilePicture(data.profilePicture); // Set profile picture URL from Cloudinary
+                } else {
+                    console.error('Error fetching profile picture:', data.error);
+                }
+            } catch (error) {
+                console.error('Error fetching profile picture:', error);
+            }
+        };
+
+        fetchProfilePicture();
+    }, []);
 
     // Handle file selection
     const handleFileChange = (event) => {
@@ -40,6 +60,7 @@ export default function ProfilePage() {
 
             if (res.ok) {
                 setUploadedImageUrl(data.url); // Cloudinary URL of uploaded image
+                setProfilePicture(data.url); // Update profile picture with new uploaded image
                 setSelectedImage(null); // Clear selected image preview
                 fileInput.value = ""; // Clear file input
                 setStatusMessage("Image uploaded successfully!"); // Success message
@@ -57,7 +78,17 @@ export default function ProfilePage() {
 
     return (
         <div className="max-w-lg mx-auto p-4">
-            <h1 className="text-2xl font-semibold mb-4">Upload Profile Picture</h1>
+            <h1 className="text-2xl font-semibold mb-4">Profile</h1>
+
+            {/* Profile Picture from Cloudinary */}
+            {profilePicture && (
+                <div className="mb-4">
+                    <p className="text-gray-700 mb-2">Current Profile Picture:</p>
+                    <img src={profilePicture} alt="Profile" className="w-full h-auto rounded-lg shadow-md" />
+                </div>
+            )}
+
+            <h2 className="text-lg font-semibold mb-4">Upload New Profile Picture</h2>
 
             {/* Image Preview */}
             {selectedImage && (

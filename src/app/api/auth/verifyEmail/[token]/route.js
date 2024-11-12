@@ -6,10 +6,13 @@ import crypto from 'crypto';
 export async function GET(request, { params }) {
     try {
         await connectToDatabase();
-        
+
+        // Await the params to unwrap it
+        const { token } = await params;
+
         const hashedToken = crypto
             .createHash('sha256')
-            .update(params.token)
+            .update(token)
             .digest('hex');
 
         const user = await User.findOne({

@@ -7,7 +7,7 @@ export async function emailVerify(user, request, type) {
     const hashedToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
 
     user.verificationToken = hashedToken;
-    user.verificationExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    user.verificationExpires = Date.now() + 60 * 60 * 1000; // 10 minutes
     await user.save({ validateBeforeSave: false });
 
     const url = new URL(request.url);

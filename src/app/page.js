@@ -1,8 +1,16 @@
-export default function DashboardPage() {
+import React from 'react';
+
+function Home(){
     return (
-        <div>
-            <h1>First Page</h1>
-            <p>This is the slash page.</p>
+        <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100vh'
+        }}>
+            <h1>Landing Page</h1>
         </div>
-    );
+    )
 }
+
+export default Home;

@@ -77,3 +77,15 @@ bun dev
 ```
 
 Open [http://localhost:3030](http://localhost:3030) with your browser to see the result.
+
+## Tech Stack
+
+**Auth & Session Management**: Gunakan JWT untuk aplikasi yang memerlukan otentikasi tanpa status (stateless) dan Redis untuk cache sesi jika aplikasi memerlukan sesi yang disimpan server.
+
+**Database**: MongoDB, NoSQL sebagai penyimpanan data utama yang dapat disesuaikan dengan kebutuhan aplikasi.
+
+**Media Handling**: Gunakan Cloudinary untuk manajemen gambar dan video.
+
+**Caching**: Redis untuk caching data server dan React Query/SWR untuk caching data API di klien.
+
+**Real-Time Features**: Socket.IO untuk notifikasi langsung atau live chat.

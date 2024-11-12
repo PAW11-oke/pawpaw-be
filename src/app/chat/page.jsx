@@ -1,5 +1,8 @@
 "use client";
 import { useState, useEffect } from 'react';
+import io from 'socket.io-client';
+
+let socket;
 
 export default function ChatPage() {
     const [groups, setGroups] = useState([]);
@@ -9,6 +12,15 @@ export default function ChatPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
+    // Initialize Socket.IO connection
+    useEffect(() => {
+        socket = io({ path: "/api/socket" }); // Connect to Socket.IO server
+        return () => {
+            socket.disconnect(); // Disconnect when component unmounts
+        };
+    }, []);
+
+    // Fetch groups on component mount
     useEffect(() => {
         setLoading(true);
         fetch('/api/chat/group')
@@ -24,6 +36,7 @@ export default function ChatPage() {
             });
     }, []);
 
+    // Listen for messages when joining a group
     useEffect(() => {
         if (selectedGroupId) {
             setLoading(true);
@@ -38,6 +51,17 @@ export default function ChatPage() {
                     setLoading(false);
                     console.error(err);
                 });
+
+            // Join selected group and set up listener
+            socket.emit('joinGroup', selectedGroupId);
+            socket.on('newMessage', (newMessage) => {
+                setMessages((prevMessages) => [...prevMessages, newMessage]);
+            });
+
+            return () => {
+                socket.emit('leaveGroup', selectedGroupId);
+                socket.off('newMessage');
+            };
         }
     }, [selectedGroupId]);
 
@@ -66,9 +90,12 @@ export default function ChatPage() {
 
                 if (response.ok) {
                     const savedMessage = await response.json();
-                    setMessages(prevMessages => [...prevMessages, savedMessage]);
+                    setMessages((prevMessages) => [...prevMessages, savedMessage]);
                     setMessageContent('');
                     setError(null);
+
+                    // Emit new message to the server
+                    socket.emit('sendMessage', savedMessage);
                 } else {
                     setError('Failed to send message');
                 }

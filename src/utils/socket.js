@@ -1,30 +1,53 @@
-import { Server } from 'socket.io';
+// pages/api/socket.js
+import { Server } from "socket.io";
+import { connectToDatabase } from "@/utils/dbConfig";
+import Message from "@/models/messageModel"; // Sesuaikan dengan struktur modelmu
 
-let io;
-
-export const initSocket = (server) => {
-    if (!io) {
-        io = new Server(server, {
+const ioHandler = (req, res) => {
+    if (!res.socket.server.io) {
+        console.log("Initializing Socket.IO server...");
+        const io = new Server(res.socket.server, {
             cors: {
-                origin: process.env.NEXT_PUBLIC_FRONTEND_URL,
-                methods: ['GET', 'POST']
-            }
+                origin: "http://localhost:3000", // Ganti sesuai URL frontend kamu
+                methods: ["GET", "POST"],
+            },
+        });
+        
+        io.on("connection", (socket) => {
+            console.log("User connected:", socket.id);
+
+            socket.on("joinGroup", (groupId) => {
+                socket.join(groupId);
+                console.log(`User ${socket.id} joined group ${groupId}`);
+            });
+
+            socket.on("sendMessage", async (data) => {
+                try {
+                    await connectToDatabase();
+
+                    const newMessage = new Message({
+                        groupId: data.groupId,
+                        userId: data.userId,
+                        content: data.content,
+                        createdAt: new Date(),
+                    });
+                    await newMessage.save();
+
+                    // Broadcast to all users in the group
+                    io.to(data.groupId).emit("receiveMessage", newMessage);
+                } catch (error) {
+                    console.error("Error sending message:", error);
+                }
+            });
+
+            socket.on("disconnect", () => {
+                console.log("User disconnected:", socket.id);
+            });
         });
 
-        io.on('sendMessage', async ({ groupId, userId, content }) => {
-            const user = await User.findById(userId);
-            const message = {
-                groupId,
-                userId,
-                content,
-                profilePicture: user.profilePicture, // Include profile picture URL
-                createdAt: new Date(),
-            };
-            await new Message(message).save();
-        
-            io.to(groupId).emit('receiveMessage', message);  // Emit ke semua user dalam grup
-        });
-        
+        res.socket.server.io = io;
     }
-    return io;
+    res.end();
 };
+
+export default ioHandler;

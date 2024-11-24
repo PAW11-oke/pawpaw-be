@@ -1,35 +1,86 @@
-import connectToDatabase from '@/utils/database';
-import DailyActivity from '@/models/DailyActivity';
+// app/api/pets/route.js
 import { NextResponse } from 'next/server';
+import { connectToDatabase } from '@/utils/dbConfig';
+import { authMiddleware } from '@/utils/authMiddleware';
+import Pet from '@/models/petModel';
+import DailyActivity from '@/models/dailyActivityModel';
 
-export async function GET(request) {
+export async function GET(req) {
     try {
-        const { searchParams } = new URL(request.url);
-        const userId = searchParams.get('userId'); // User ID
-        const petId = searchParams.get('petId');   // Pet ID
-
-        if (!userId || !petId) {
-            return NextResponse.json(
-                { success: false, error: 'User ID and Pet ID are required.' },
-                { status: 400 }
-            );
+        // Auth check
+        const authResult = await authMiddleware(req);
+        if (!authResult || authResult.status === 401) {
+            return new Response("Unauthorized", { status: 401 });
         }
 
         await connectToDatabase();
 
-        // Fetch daily activities for the given user and pet
-        const activities = await DailyActivity.find({ pet: petId })
-            .populate('pet', 'name owner') // Populate pet details
-            .exec();
+        const { searchParams } = new URL(req.url);
+        const name = searchParams.get('name');
 
-        return NextResponse.json(
-            { success: true, data: activities },
+        // Base query dengan owner dari auth
+        let query = { owner: req.userId };
+
+        // Tambahkan filter nama jika ada
+        if (name) {
+            query.name = { $regex: name, $options: 'i' };
+        }
+
+        // Fetch pets
+        const pets = await Pet.find(query).lean();
+
+        // Fetch activities untuk semua pets
+        const petsWithActivities = await Promise.all(
+            pets.map(async (pet) => {
+                const activities = await DailyActivity.find({ pet: pet._id })
+                    .select('photo caption createdAt')
+                    .sort({ createdAt: -1 })
+                    .lean();
+
+                return {
+                    _id: pet._id,
+                    name: pet.name,
+                    petType: pet.petType,
+                    birthDate: pet.birthDate,
+                    age: pet.age,
+                    breed: pet.breed,
+                    photo: pet.photo || '/DefaultProfilePicture.png',
+                    activities: activities.map(activity => ({
+                        _id: activity._id,
+                        photo: activity.photo || '/DefaultProfilePicture.png',
+                        caption: activity.caption,
+                        date: activity.createdAt
+                    }))
+                };
+            })
+        );
+
+        if (!petsWithActivities || petsWithActivities.length === 0) {
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    message: 'No pets found.',
+                    data: []
+                }),
+                { status: 200 }
+            );
+        }
+
+        return new Response(
+            JSON.stringify({
+                success: true,
+                data: petsWithActivities
+            }),
             { status: 200 }
         );
+
     } catch (error) {
-        console.error('Error fetching daily activities:', error);
-        return NextResponse.json(
-            { success: false, error: 'Failed to fetch daily activities.' },
+        console.error('Error fetching pets:', error);
+        return new Response(
+            JSON.stringify({ 
+                success: false, 
+                error: 'Failed to fetch pets.' 
+            }),
             { status: 500 }
         );
     }
@@ -44,49 +95,49 @@ export async function POST(req) {
         return authResult;
     }
 
-    const formData = await req.formData();
-    const file = formData.get('file');
-    const petId = formData.get('pet'); // ID pet yang terkait
-    const caption = formData.get('caption');
-
-    // Validasi input
-    if (!file || !petId) {
-        return new Response(
-            JSON.stringify({ error: 'File and Pet ID are required.' }),
-            { status: 400 }
-        );
-    }
-
     try {
-        // Upload ke Cloudinary
-        const uploadResult = await uploadToCloudinary(file, 'daily_activities');
+        const formData = await req.formData();
+        const file = formData.get('file');
+        const petId = formData.get('pet');
+        const caption = formData.get('caption');
 
-        // Simpan ke database
-        const dailyActivity = new DailyActivity({
-            pet: petId,
-            photo: uploadResult.secure_url,
-            caption: caption || '', // Default kosong jika caption tidak diisi
-        });
+        // Validasi input
+        if (!file || !petId) {
+            return NextResponse.json(
+                { success: false, error: 'File and Pet ID are required.' },
+                { status: 400 }
+            );
+        }
 
-        await dailyActivity.save();
+        // Handle file upload dengan detail tambahan
+        const uploadResult = await handleFileUpload(
+            file,
+            'pet',
+            {
+                petId,
+                caption
+            },
+            req.userId
+        );
 
-        return new Response(
-            JSON.stringify({
+        if (uploadResult.error) {
+            return NextResponse.json(
+                { success: false, error: uploadResult.error },
+                { status: 400 }
+            );
+        }
+
+        return NextResponse.json(
+            {
                 success: true,
-                data: {
-                    _id: dailyActivity._id,
-                    pet: dailyActivity.pet,
-                    photo: dailyActivity.photo,
-                    caption: dailyActivity.caption,
-                    createdAt: dailyActivity.createdAt,
-                },
-            }),
+                data: uploadResult.data
+            },
             { status: 201 }
         );
     } catch (error) {
         console.error('Error creating daily activity:', error);
-        return new Response(
-            JSON.stringify({ error: 'Failed to create daily activity.' }),
+        return NextResponse.json(
+            { success: false, error: 'Failed to create daily activity.' },
             { status: 500 }
         );
     }

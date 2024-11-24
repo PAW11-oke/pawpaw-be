@@ -1,205 +1,226 @@
 import { connectToDatabase } from '@/utils/dbConfig';
 import { NextResponse } from 'next/server';
 import Pet from '@/models/petModel';
+import { authMiddleware } from '@/utils/authMiddleware';
+import { uploadToCloudinary, deleteFromCloudinary } from '@/utils/cloudinary';
 
-export async function GET(request) {
-    const { searchParams } = new URL(request.url);
-    const owner = searchParams.get('owner'); // Query parameter for owner ID
-    const name = searchParams.get('name');  // Query parameter for pet name (optional)
-
-    if (!owner) {
-        return NextResponse.json(
-            { success: false, error: 'Owner ID is required.' },
-            { status: 400 }
-        );
-    }
-
+export async function GET(req) {
     try {
-        await connectToDatabase();
-
-        let query = { owner }; // Base query: filter by owner
-        if (name) {
-            // Add name filter for partial match (case-insensitive)
-            query.name = { $regex: name, $options: 'i' };
+        // Auth check
+        const authResult = await authMiddleware(req);
+        if (!authResult || authResult.status === 401) {
+            return new Response("Unauthorized", { status: 401 });
         }
 
-        // Fetch pets based on the query, including owner information
-        const pets = await Pet.find(query).populate('owner');
+        await connectToDatabase();
 
-        return NextResponse.json(
-            { success: true, data: pets },
+        // Get pets owned by the authenticated user
+        const pets = await Pet.find({ owner: req.userId });
+
+        return new Response(
+            JSON.stringify({
+                success: true,
+                data: pets
+            }),
             { status: 200 }
         );
     } catch (error) {
         console.error('Error fetching pets:', error);
-        return NextResponse.json(
-            { success: false, error: 'Failed to fetch pets.' },
-            { status: 500 }
-        );
-    }
-}
-
-export async function GET(req) {
-    await connectToDatabase();
-
-    const userId = req.nextUrl.searchParams.get('userId');
-
-    if (!userId) {
-        return NextResponse.json(
-            { error: 'User ID is required.' },
-            { status: 400 }
-        );
-    }
-
-    try {
-        const pets = await Pet.find({ owner: userId });
-
-        if (!pets || pets.length === 0) {
-            return NextResponse.json(
-                { error: 'No pets found for the given User ID.' },
-                { status: 404 }
-            );
-        }
-
-        return NextResponse.json({ pets }, { status: 200 });
-    } catch (error) {
-        console.error('Error fetching pets:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch pets.' },
+        return new Response(
+            JSON.stringify({ error: 'Failed to fetch pets.' }),
             { status: 500 }
         );
     }
 }
 
 export async function POST(req) {
-    await connectToDatabase();
-
-    const { owner, name, photo, birthDate, age, petType, breed } = await req.json();
-
-    if (!owner || !name || !petType) {
-        return NextResponse.json(
-            { error: 'Owner, name, and pet type are required.' },
-            { status: 400 }
-        );
-    }
-
     try {
+        // Auth check
+        const authResult = await authMiddleware(req);
+        if (!authResult || authResult.status === 401) {
+            return new Response("Unauthorized", { status: 401 });
+        }
+
+        await connectToDatabase();
+
+        const formData = await req.formData();
+        const name = formData.get('name');
+        const petType = formData.get('petType');
+        const breed = formData.get('breed');
+        const birthDate = formData.get('birthDate');
+        const age = formData.get('age');
+        const photo = formData.get('photo');
+
+        if (!name || !petType) {
+            return new Response(
+                JSON.stringify({ error: 'Name and pet type are required.' }),
+                { status: 400 }
+            );
+        }
+
+        // Handle photo upload if provided
+        let photoUrl = null;
+        if (photo && photo.size > 0) {
+            const uploadResult = await uploadToCloudinary(photo, 'pet');
+            if (uploadResult.error) {
+                return new Response(
+                    JSON.stringify({ error: 'Failed to upload photo.' }),
+                    { status: 400 }
+                );
+            }
+            photoUrl = uploadResult.secure_url;
+        }
+
+        // Create new pet
         const newPet = await Pet.create({
-            owner,
+            owner: req.userId,
             name,
-            photo,
-            birthDate,
-            age,
             petType,
             breed,
+            birthDate: birthDate ? new Date(birthDate) : undefined,
+            age: parseInt(age) || undefined,
+            photo: photoUrl
         });
 
-        return NextResponse.json(
-            { message: 'Pet created successfully.', pet: newPet },
+        return new Response(
+            JSON.stringify({
+                success: true,
+                data: newPet
+            }),
             { status: 201 }
         );
     } catch (error) {
         console.error('Error creating pet:', error);
-        return NextResponse.json(
-            { error: 'Failed to create pet.' },
+        return new Response(
+            JSON.stringify({ error: 'Failed to create pet.' }),
             { status: 500 }
         );
     }
 }
 
-export async function PUT(req) {
-    await connectToDatabase();
-
-    const petId = req.nextUrl.searchParams.get('petId');
-    const { name, photo, birthDate, age, petType, breed } = await req.json();
-
-    if (!petId) {
-        return NextResponse.json(
-            { error: 'Pet ID is required.' },
-            { status: 400 }
-        );
-    }
-
+// app/api/pets/[id]/route.js
+export async function PUT(req, { params }) {
     try {
-        const updatedPet = await Pet.findByIdAndUpdate(
-            petId,
-            {
-                $set: {
-                    name,
-                    photo,
-                    birthDate,
-                    age,
-                    petType,
-                    breed,
-                },
-            },
-            { new: true }
-        );
+        // Auth check
+        const authResult = await authMiddleware(req);
+        if (!authResult || authResult.status === 401) {
+            return new Response("Unauthorized", { status: 401 });
+        }
 
-        if (!updatedPet) {
-            return NextResponse.json(
-                { error: 'Pet not found.' },
+        await connectToDatabase();
+
+        const formData = await req.formData();
+        const name = formData.get('name');
+        const petType = formData.get('petType');
+        const breed = formData.get('breed');
+        const birthDate = formData.get('birthDate');
+        const age = formData.get('age');
+        const photo = formData.get('photo');
+
+        // Get existing pet and verify ownership
+        const existingPet = await Pet.findOne({ 
+            _id: params.id,
+            owner: req.userId 
+        });
+
+        if (!existingPet) {
+            return new Response(
+                JSON.stringify({ error: 'Pet not found or unauthorized.' }),
                 { status: 404 }
             );
         }
 
-        return NextResponse.json(
-            { message: 'Pet updated successfully.', pet: updatedPet },
+        // Handle photo update if provided
+        let photoUrl = existingPet.photo;
+        if (photo && photo.size > 0) {
+            // Delete old photo if exists
+            if (existingPet.photo) {
+                await deleteFromCloudinary(existingPet.photo);
+            }
+
+            // Upload new photo
+            const uploadResult = await uploadToCloudinary(photo, 'pet');
+            if (uploadResult.error) {
+                return new Response(
+                    JSON.stringify({ error: 'Failed to upload photo.' }),
+                    { status: 400 }
+                );
+            }
+            photoUrl = uploadResult.secure_url;
+        }
+
+        // Update pet
+        const updatedPet = await Pet.findByIdAndUpdate(
+            params.id,
+            {
+                name: name || existingPet.name,
+                petType: petType || existingPet.petType,
+                breed: breed || existingPet.breed,
+                birthDate: birthDate ? new Date(birthDate) : existingPet.birthDate,
+                age: age ? parseInt(age) : existingPet.age,
+                photo: photoUrl
+            },
+            { new: true }
+        );
+
+        return new Response(
+            JSON.stringify({
+                success: true,
+                data: updatedPet
+            }),
             { status: 200 }
         );
     } catch (error) {
         console.error('Error updating pet:', error);
-        return NextResponse.json(
-            { error: 'Failed to update pet.' },
+        return new Response(
+            JSON.stringify({ error: 'Failed to update pet.' }),
             { status: 500 }
         );
     }
 }
 
-export async function PUT(req) {
-    await connectToDatabase();
-
-    const petId = req.nextUrl.searchParams.get('petId');
-    const { name, photo, birthDate, age, petType, breed } = await req.json();
-
-    if (!petId) {
-        return NextResponse.json(
-            { error: 'Pet ID is required.' },
-            { status: 400 }
-        );
-    }
-
+export async function DELETE(req, { params }) {
     try {
-        const updatedPet = await Pet.findByIdAndUpdate(
-            petId,
-            {
-                $set: {
-                    name,
-                    photo,
-                    birthDate,
-                    age,
-                    petType,
-                    breed,
-                },
-            },
-            { new: true }
-        );
+        // Auth check
+        const authResult = await authMiddleware(req);
+        if (!authResult || authResult.status === 401) {
+            return new Response("Unauthorized", { status: 401 });
+        }
 
-        if (!updatedPet) {
-            return NextResponse.json(
-                { error: 'Pet not found.' },
+        await connectToDatabase();
+
+        // Get pet and verify ownership
+        const pet = await Pet.findOne({ 
+            _id: params.id,
+            owner: req.userId 
+        });
+
+        if (!pet) {
+            return new Response(
+                JSON.stringify({ error: 'Pet not found or unauthorized.' }),
                 { status: 404 }
             );
         }
 
-        return NextResponse.json(
-            { message: 'Pet updated successfully.', pet: updatedPet },
+        // Delete photo from Cloudinary if exists
+        if (pet.photo) {
+            await deleteFromCloudinary(pet.photo);
+        }
+
+        // Delete pet from database
+        await Pet.findByIdAndDelete(params.id);
+
+        return new Response(
+            JSON.stringify({
+                success: true,
+                message: 'Pet deleted successfully.'
+            }),
             { status: 200 }
         );
     } catch (error) {
-        console.error('Error updating pet:', error);
-        return NextResponse.json(
-            { error: 'Failed to update pet.' },
+        console.error('Error deleting pet:', error);
+        return new Response(
+            JSON.stringify({ error: 'Failed to delete pet.' }),
             { status: 500 }
         );
     }

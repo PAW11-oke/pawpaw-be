@@ -51,34 +51,85 @@ export async function GET(req) {
     }
 }
 
-export async function POST(request) { 
-    const { pet, petName, medicalHistory, allergies, vaccines } = await request.json();
-    // fetch list name pets dulu dari '/api/pets?name='
+export async function POST(req) {
+    try {
+        // Auth check
+        const authResult = await authMiddleware(req);
+        if (!authResult || authResult.status === 401) {
+            return new Response("Unauthorized", { status: 401 });
+        }
+
         await connectToDatabase();
-    
+
+        const { pet, petName, medicalHistory, allergies, vaccines } = await req.json();
+
         let petId;
-    
-        if (petName) {
-        // Find the pet by name and get its ID
-        const foundPet = await Pet.findOne({ name: petName });
-        if (!foundPet) {
-            return NextResponse.json({ error: 'Pet not found.' }, { status: 404 });
-        }
-        petId = foundPet._id;
-        } else if (pet) {
-        petId = pet;
+
+        if (pet) {
+            // Verify pet ownership
+            const foundPet = await Pet.findOne({ 
+                _id: pet,
+                owner: req.userId 
+            });
+
+            if (!foundPet) {
+                return new Response(
+                    JSON.stringify({ error: 'Pet not found or unauthorized.' }),
+                    { status: 404 }
+                );
+            }
+            petId = pet;
+        } else if (petName) {
+            // Find pet by name and verify ownership
+            const foundPet = await Pet.findOne({ 
+                name: petName,
+                owner: req.userId 
+            });
+
+            if (!foundPet) {
+                return new Response(
+                    JSON.stringify({ error: 'Pet not found or unauthorized.' }),
+                    { status: 404 }
+                );
+            }
+            petId = foundPet._id;
         } else {
-        return NextResponse.json({ error: 'Either pet ID or pet name is required.' }, { status: 400 });
+            return new Response(
+                JSON.stringify({ error: 'Either pet ID or pet name is required.' }),
+                { status: 400 }
+            );
         }
-    
+
+        // Create health tracking record
         const newHealthTracking = await HealthTracking.create({
-        pet: petId,
-        medicalHistory,
-        allergies,
-        vaccines,
+            pet: petId,
+            medicalHistory,
+            allergies,
+            vaccines
         });
 
-    return NextResponse.json({ success: true, data: newHealthTracking }, { status: 201 });
+        // Populate pet details in response
+        const populatedHealthTracking = await HealthTracking.findById(newHealthTracking._id)
+            .populate('pet', 'name petType breed');
+
+        return new Response(
+            JSON.stringify({
+                success: true,
+                data: populatedHealthTracking
+            }),
+            { status: 201 }
+        );
+
+    } catch (error) {
+        console.error('Error creating health tracking:', error);
+        return new Response(
+            JSON.stringify({ 
+                success: false, 
+                error: 'Failed to create health tracking record.' 
+            }),
+            { status: 500 }
+        );
+    }
 }
 
 export async function PUT(req) {

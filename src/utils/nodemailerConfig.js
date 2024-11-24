@@ -16,15 +16,8 @@ const sendEmail = async (options) => {
             rejectUnauthorized: true 
         }
     });
-
-    const emailOptions = {
-        from: process.env.EMAIL_FROM,
-        to: options.email,
-        subject: options.subject,
-        html: options.message,  
-    };
-
-    await transporter.sendMail(emailOptions);
+    
+    await transporter.sendMail();
 };
 
 module.exports = sendEmail;

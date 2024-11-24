@@ -29,7 +29,7 @@ function Signup() {
             const data = await response.json();
             setMessage(data.message);
             if (data.success) {
-                setTimeout(() => window.location.href = '/login', 3000); // Redirect tanpa Next.js
+                setTimeout(() => window.location.href = '/login', 3000); 
             }
         } catch (error) {
             setMessage('Something went wrong');

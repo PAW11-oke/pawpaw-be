@@ -7,7 +7,7 @@ const reactionSchema = new mongoose.Schema({
         enum: ['like', 'love', 'haha', 'angry', 'sad'], 
         required: true 
     }, // Reaksi tambahan bisa ditambahkan sesuai kebutuhan
-}, { _id: false });  // Menghilangkan _id untuk reaksi karena kita tidak memerlukannya
+}, { _id: false });  
 
 const messageSchema = new mongoose.Schema({
     groupId: { 
@@ -33,5 +33,9 @@ const messageSchema = new mongoose.Schema({
         ref: 'Message'  // Referensi ke pesan yang dibalas
     }]  
 });
+
+messageSchema.methods.getFormattedDate = function() {
+    return this.createdAt.toLocaleString();  // Format sesuai kebutuhan (opsional)
+};
 
 export default mongoose.models.Message || mongoose.model('Message', messageSchema);

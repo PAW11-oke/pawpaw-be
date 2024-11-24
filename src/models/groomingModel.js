@@ -6,8 +6,12 @@ const groomingSchema = new mongoose.Schema({
         ref: 'Pet',
         required: true,
     },
-    schedule: {
+    scheduleDate: {
         type: Date,
+        required: true,
+    },
+    scheduleTime: {
+        type: String,
         required: true,
     },
     location: {

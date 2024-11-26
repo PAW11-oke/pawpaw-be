@@ -57,7 +57,7 @@ EMAIL_AUTH_PASS=your_password
 GOOGLE_CLIENT_ID=your_client_id
 GOOGLE_CLIENT_SECRET=your_client_secret
 
-# JWT (Jika digunakan)
+# JWT
 JWT_SECRET=your_jwt_secret
 NODE_ENV=production
 ```
